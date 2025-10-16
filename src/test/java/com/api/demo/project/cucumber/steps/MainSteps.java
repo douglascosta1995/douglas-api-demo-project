@@ -24,9 +24,6 @@ public class MainSteps {
     private PayloadBuilder payloadBuilder;
 
     @Autowired
-    private MainResponseStorage mainResponseStorage;
-
-    @Autowired
     private Requests requests;
 
     @Value("${URL}")
@@ -41,16 +38,15 @@ public class MainSteps {
     @Value("${USERS_BY_ID}")
     private String USERS_BY_ID_ENDPOINT;
 
-    @Given("I get the token with payload {string}")
-    public void given_iGetTheTokenWithPayload(String fileName) {
-        String payload = payloadBuilder.prepareRequestPayload(fileName);
-        requests.getToken(payload);
+    @Given("I get the token")
+    public void given_iGetTheToken() {
+        requests.getToken();
     }
 
     @And("I prepare the request payload {string}")
     public void and_IPrepareTheRequestPayload(String fileName) {
         String payload = payloadBuilder.prepareRequestPayload(fileName);
-        mainResponseStorage.setPayload(payload);
+        requests.setPayload(payload);
     }
 
     @When("I send the request to the create a new user with name {string} and email {string}")
@@ -112,7 +108,7 @@ public class MainSteps {
     @When("I send the PUT request with User ID {string}")
     public void when_ISendThePutRequestWithUserId(String id) {
         String userByID = USERS_BY_ID_ENDPOINT.replace("<user_id>", id);
-        String payload = mainResponseStorage.getPayload();
+        String payload = requests.getPayload();
         requests.updateUser(userByID,payload);
     }
 

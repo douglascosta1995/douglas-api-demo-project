@@ -35,6 +35,8 @@ public class Requests {
     @Value("${USERS_BY_ID}")
     private String USERS_BY_ID_ENDPOINT;
 
+    private String TOKEN_PAYLOAD = "auth.json";
+
     public int getStatusCode(){
         return mainResponseStorage.getResponseFull().getStatusCode();
     }
@@ -55,7 +57,16 @@ public class Requests {
         return mainResponseStorage.getResponseFull().jsonPath().getList(key);
     }
 
-    public void getToken(String payload) {
+    public void setPayload(String payload){
+        mainResponseStorage.setPayload(payload);
+    }
+
+    public String getPayload(){
+        return mainResponseStorage.getPayload();
+    }
+
+    public void getToken() {
+        String payload = payloadBuilder.prepareRequestPayload(TOKEN_PAYLOAD);
         Response response = RestAssured
                 .given()
                 .baseUri(BASE_URL) // baseUrl injected or read from properties
