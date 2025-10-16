@@ -37,7 +37,6 @@ public class MainSteps {
     @Value("${USERS_BY_ID}")
     private String USERS_BY_ID_ENDPOINT;
 
-
     @Given("I get the token with payload {string}")
     public void given_iGetTheTokenWithPayload(String fileName) {
         String payload = payloadBuilder.prepareRequestPayload(fileName);
@@ -78,10 +77,8 @@ public class MainSteps {
                 .when()
                 .post(USERS_ENDPOINT);
 
-        //System.out.println(response.jsonPath().getInt("id"));
         mainResponseStorage.setNewestCreatedUser(response.jsonPath().getString("id"));
         mainResponseStorage.setResponseFull(response);
-        //mainResponseStorage.setResponseCode(response.getStatusCode());
     }
 
     @Then("the response status code should be {int}")
@@ -97,7 +94,6 @@ public class MainSteps {
 
     @When("I send the GET request")
     public void when_iSendTheGetRequest() {
-
         Response response = RestAssured
                 .given()
                 .baseUri(baseUrl) // baseUrl injected or read from properties
@@ -106,17 +102,13 @@ public class MainSteps {
                 .get(USERS_ENDPOINT);
 
         mainResponseStorage.setResponseFull(response);
-        System.out.println(response.asString());
     }
 
     @Then("all existing users are listed")
     public void then_allExistingUsersAreListed() {
         List<Map<String, Object>> users = mainResponseStorage.getResponseFull().jsonPath().getList("$");
-
-        Assert.assertFalse(users.isEmpty());
-
         int nameCount = mainResponseStorage.getResponseFull().jsonPath().getList("name").size();
-        System.out.println("Number of names: " + nameCount);
+        Assert.assertFalse(users.isEmpty());
         Assert.assertTrue(nameCount>0);
     }
 
@@ -132,7 +124,6 @@ public class MainSteps {
                 .delete(userByID);
 
         mainResponseStorage.setResponseFull(response);
-        System.out.println(response.asString());
     }
 
     @Then("the user with newest ID is not present anymore")
@@ -162,7 +153,6 @@ public class MainSteps {
                 .get(userByID);
 
         mainResponseStorage.setResponseFull(response);
-        System.out.println(response.asString());
     }
 
     @Then("the user with ID {string} is displayed")
@@ -185,15 +175,11 @@ public class MainSteps {
                 .put(userByID);
 
         mainResponseStorage.setResponseFull(response);
-        System.out.println(response.asString());
     }
 
     @And("the user is updated successfully")
     public void theUserIsUpdatedSuccessfully() {
         String message = mainResponseStorage.getResponseFull().jsonPath().getString("message");
-
         Assert.assertEquals("User updated successfully", message);
-
-
     }
 }
