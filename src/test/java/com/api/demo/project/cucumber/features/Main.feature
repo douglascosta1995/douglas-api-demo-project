@@ -3,9 +3,9 @@ Feature: Main.feature
   Scenario: Creating a new User
     Given I get the token with payload "auth.json"
     And I prepare the request payload "newUser.json"
-    When I send the request to the create a new user with name "Douglas" and email "douglas@test.com"
+    When I send the request to the create a new user with name "Pedro" and email "pedro@test.com"
     Then the response status code should be 201
-    And the response body should contain "Douglas"
+    And the response body should contain "Pedro"
 
   Scenario: Listing all users
     Given I get the token with payload "auth.json"

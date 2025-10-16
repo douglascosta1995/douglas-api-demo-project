@@ -2,6 +2,7 @@ package com.api.demo.project.cucumber.steps;
 
 import com.api.demo.project.helpers.PayloadBuilder;
 import com.api.demo.project.storage.MainResponseStorage;
+import com.api.demo.project.storage.Requests;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -25,6 +26,9 @@ public class MainSteps {
     @Autowired
     private MainResponseStorage mainResponseStorage;
 
+    @Autowired
+    private Requests requests;
+
     @Value("${URL}")
     private String baseUrl;
 
@@ -40,15 +44,7 @@ public class MainSteps {
     @Given("I get the token with payload {string}")
     public void given_iGetTheTokenWithPayload(String fileName) {
         String payload = payloadBuilder.prepareRequestPayload(fileName);
-        Response response = RestAssured
-                .given()
-                .baseUri(baseUrl) // baseUrl injected or read from properties
-                .header("Content-Type", "application/json")
-                .body(payload)
-                .when()
-                .post(TOKEN_ENDPOINT);
-
-        mainResponseStorage.setBearerToken(response.jsonPath().getString("token"));
+        requests.getToken(payload);
     }
 
     @And("I prepare the request payload {string}")
@@ -59,105 +55,57 @@ public class MainSteps {
 
     @When("I send the request to the create a new user with name {string} and email {string}")
     public void when_iSendTheRequestToTheCreateANewUser(String name, String email) throws JsonProcessingException {
-        String payload = mainResponseStorage.getPayload();
-
-        ObjectMapper objectMapper = new ObjectMapper();
-        ObjectNode objectNode = (ObjectNode) objectMapper.readTree(payload);
-
-        objectNode.put("name", name);
-        objectNode.put("email", email);
-
-        String updatedPayload = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(objectNode);
-        Response response = RestAssured
-                .given()
-                .baseUri(baseUrl)
-                .header("Authorization", "Bearer " + mainResponseStorage.getBearerToken())
-                .contentType(ContentType.JSON)
-                .body(updatedPayload)
-                .when()
-                .post(USERS_ENDPOINT);
-
-        mainResponseStorage.setNewestCreatedUser(response.jsonPath().getString("id"));
-        mainResponseStorage.setResponseFull(response);
+        requests.createUser(name,email);
     }
 
     @Then("the response status code should be {int}")
     public void then_theResponseStatusCodeShouldBe(int expected_code) {
-        Assert.assertEquals(expected_code, mainResponseStorage.getResponseFull().getStatusCode());
+        int actual_code = requests.getStatusCode();
+        Assert.assertEquals(expected_code, actual_code);
     }
 
     @And("the response body should contain {string}")
     public void and_theResponseBodyShouldContain(String expected_name) {
-        String actual_name = mainResponseStorage.getResponseFull().jsonPath().getString("name");
+        String actual_name = requests.getResponseBodyString("name");
         Assert.assertEquals(expected_name, actual_name);
     }
 
     @When("I send the GET request")
     public void when_iSendTheGetRequest() {
-        Response response = RestAssured
-                .given()
-                .baseUri(baseUrl) // baseUrl injected or read from properties
-                .header("Authorization", "Bearer " + mainResponseStorage.getBearerToken())
-                .when()
-                .get(USERS_ENDPOINT);
-
-        mainResponseStorage.setResponseFull(response);
+        requests.getUsers();
     }
 
     @Then("all existing users are listed")
     public void then_allExistingUsersAreListed() {
-        List<Map<String, Object>> users = mainResponseStorage.getResponseFull().jsonPath().getList("$");
-        int nameCount = mainResponseStorage.getResponseFull().jsonPath().getList("name").size();
+        List<Map<String, Object>> users = requests.getFullListResponseBody();
+        int nameCount = requests.getFullListResponseBodyString("name").size();
         Assert.assertFalse(users.isEmpty());
         Assert.assertTrue(nameCount>0);
     }
 
     @When("I send the DELETE request with newest User ID")
     public void when_ISendTheDeleteRequestWithNewestUserId() {
-        String id = mainResponseStorage.getNewestCreatedUser();
-        String userByID = USERS_BY_ID_ENDPOINT.replace("<user_id>", id);
-        Response response = RestAssured
-                .given()
-                .baseUri(baseUrl) // baseUrl injected or read from properties
-                .header("Authorization", "Bearer " + mainResponseStorage.getBearerToken())
-                .when()
-                .delete(userByID);
-
-        mainResponseStorage.setResponseFull(response);
+        requests.deleteNewestUser();
     }
 
     @Then("the user with newest ID is not present anymore")
     public void then_theUserWithNewestIdIsNotPresentAnymore() {
-        String id = mainResponseStorage.getNewestCreatedUser();
-        String userByID = USERS_BY_ID_ENDPOINT.replace("<user_id>", id);
-        Response response = RestAssured
-                .given()
-                .baseUri(baseUrl) // baseUrl injected or read from properties
-                .header("Authorization", "Bearer " + mainResponseStorage.getBearerToken())
-                .when()
-                .delete(userByID);
+        requests.deleteNewestUser();
 
-        mainResponseStorage.setResponseFull(response);
-        Assert.assertEquals(404, response.getStatusCode());
+        int expected_response = 404;
+        int actual_response = requests.getStatusCode();
+        Assert.assertEquals(expected_response, actual_response);
     }
 
     @When("I send the GET request with User ID {string}")
-    public void when_ISendTheGetRequestWithUserId(String string) {
-        String userByID = USERS_BY_ID_ENDPOINT.replace("<user_id>", string);
-        System.out.println(userByID);
-        Response response = RestAssured
-                .given()
-                .baseUri(baseUrl) // baseUrl injected or read from properties
-                .header("Authorization", "Bearer " + mainResponseStorage.getBearerToken())
-                .when()
-                .get(userByID);
-
-        mainResponseStorage.setResponseFull(response);
+    public void when_ISendTheGetRequestWithUserId(String id) {
+        String userIDEndpoint = USERS_BY_ID_ENDPOINT.replace("<user_id>", id);
+        requests.getUser(userIDEndpoint);
     }
 
     @Then("the user with ID {string} is displayed")
     public void then_TheUserWithIdIsDisplayed(String id) {
-        int actual_id = mainResponseStorage.getResponseFull().jsonPath().getInt("id");
+        int actual_id = requests.getResponseBodyInt("id");
         Assert.assertEquals(actual_id,Integer.parseInt(id));
     }
 
@@ -165,21 +113,12 @@ public class MainSteps {
     public void when_ISendThePutRequestWithUserId(String id) {
         String userByID = USERS_BY_ID_ENDPOINT.replace("<user_id>", id);
         String payload = mainResponseStorage.getPayload();
-        Response response = RestAssured
-                .given()
-                .baseUri(baseUrl) // baseUrl injected or read from properties
-                .header("Authorization", "Bearer " + mainResponseStorage.getBearerToken())
-                .contentType(ContentType.JSON)
-                .body(payload)
-                .when()
-                .put(userByID);
-
-        mainResponseStorage.setResponseFull(response);
+        requests.updateUser(userByID,payload);
     }
 
     @And("the user is updated successfully")
     public void theUserIsUpdatedSuccessfully() {
-        String message = mainResponseStorage.getResponseFull().jsonPath().getString("message");
+        String message = requests.getResponseBodyString("message");
         Assert.assertEquals("User updated successfully", message);
     }
 }
